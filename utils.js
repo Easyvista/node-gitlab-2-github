@@ -1,5 +1,3 @@
-import * as settings from './settings';
-
 const sleep = milliseconds => {
   return new Promise(resolve => setTimeout(resolve, milliseconds));
 };
@@ -8,7 +6,7 @@ const sleep = milliseconds => {
  * Generate regular expression which finds userid and cross-project issue references
  * from usermap and projectmap
  */
-const generateUserProjectRegex = () => {
+const generateUserProjectRegex = settings => {
   let reString = '';
   if (settings.usermap !== null && Object.keys(settings.usermap).length > 0) {
     reString = '@' + Object.keys(settings.usermap).join('|@');

@@ -1,5 +1,3 @@
-import * as settings from './settings';
-
 export default class GitlabHelper {
   constructor(gitlabApi, gitlabSettings) {
     this.gitlabApi = gitlabApi;

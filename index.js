@@ -11,10 +11,9 @@ const issueCounters = {
   nrOfReplacementIssues: 0,
   nrOfFailedIssues: 0,
 };
-
 let settings = null;
 try {
-  settings = require('./settings.js');
+  settings = require(`./settings/${process.argv[2]}`);
 } catch (e) {
   if (e.code === 'MODULE_NOT_FOUND') {
     console.log('\n\nPlease copy the sample_settings.js to settings.js.');
@@ -56,7 +55,12 @@ const githubApi = new GitHubApi({
 });
 
 const gitlabHelper = new GitlabHelper(gitlabApi, settings.gitlab);
-const githubHelper = new GithubHelper(githubApi, settings.github, gitlabHelper);
+const githubHelper = new GithubHelper(
+  githubApi,
+  settings.github,
+  gitlabHelper,
+  settings
+);
 
 // If no project id is given in settings.js, just return
 // all of the projects that this user is associated with.

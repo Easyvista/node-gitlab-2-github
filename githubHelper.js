@@ -1,10 +1,10 @@
-import * as settings from './settings';
 import utils from './utils';
 
 const gitHubLocation = 'https://github.com';
 
 export default class GithubHelper {
-  constructor(githubApi, githubSettings, gitlabHelper) {
+  constructor(githubApi, githubSettings, gitlabHelper, settings) {
+    this.settings = settings;
     this.githubApi = githubApi;
     this.githubUrl = githubSettings.baseUrl
       ? githubSettings.baseUrl
@@ -15,7 +15,7 @@ export default class GithubHelper {
     this.githubTimeout = githubSettings.timeout;
     this.gitlabHelper = gitlabHelper;
     // regex for converting user from GitLab to GitHub
-    this.userProjectRegex = utils.generateUserProjectRegex();
+    this.userProjectRegex = utils.generateUserProjectRegex(settings);
   }
 
   /*
@@ -183,14 +183,14 @@ export default class GithubHelper {
     // if the username is a valid GitHub username.
     if (issue.assignee) {
       props.assignees = [];
-      if (issue.assignee.username === settings.github.username) {
-        props.assignees.push(settings.github.username);
+      if (issue.assignee.username === this.settings.github.username) {
+        props.assignees.push(this.settings.github.username);
       } else if (
-        settings.usermap &&
-        settings.usermap[issue.assignee.username]
+        this.settings.usermap &&
+        this.settings.usermap[issue.assignee.username]
       ) {
         // get GitHub username name from settings
-        props.assignees.push(settings.usermap[issue.assignee.username]);
+        props.assignees.push(this.settings.usermap[issue.assignee.username]);
       }
     }
 
@@ -232,7 +232,7 @@ export default class GithubHelper {
     }
     await utils.sleep(2000);
 
-    if (settings.debug) return Promise.resolve({ data: issue });
+    if (this.settings.debug) return Promise.resolve({ data: issue });
     // create the GitHub issue from the GitLab issue
     return this.githubApi.issues.create(props);
   }
@@ -299,7 +299,7 @@ export default class GithubHelper {
       /removed ~.* label/i.test(noteBody) ||
       /mentioned in issue.*/i.test(noteBody);
 
-    const matchingComment = settings.skipMatchingComments.reduce(
+    const matchingComment = this.settings.skipMatchingComments.reduce(
       (a, b) => a || new RegExp(b, 'i').test(noteBody),
       false
     );
@@ -323,7 +323,7 @@ export default class GithubHelper {
 
       await utils.sleep(2000);
 
-      if (settings.debug) {
+      if (this.settings.debug) {
         return true;
       }
 
@@ -361,7 +361,7 @@ export default class GithubHelper {
 
     await utils.sleep(2000);
 
-    if (settings.debug) {
+    if (this.settings.debug) {
       return Promise.resolve();
     }
     // make the state update
@@ -389,7 +389,7 @@ export default class GithubHelper {
 
     await utils.sleep(2000);
 
-    if (settings.debug) return Promise.resolve();
+    if (this.settings.debug) return Promise.resolve();
     // create the GitHub milestone
     return await this.githubApi.issues.createMilestone(githubMilestone);
   }
@@ -410,7 +410,7 @@ export default class GithubHelper {
 
     await utils.sleep(2000);
 
-    if (settings.debug) return Promise.resolve();
+    if (this.settings.debug) return Promise.resolve();
     // create the GitHub label
     return await this.githubApi.issues.createLabel(githubLabel);
   }
@@ -502,7 +502,7 @@ export default class GithubHelper {
       }
     }
 
-    if (settings.debug) return Promise.resolve({ data: pullRequest });
+    if (this.settings.debug) return Promise.resolve({ data: pullRequest });
 
     if (canCreate) {
       let bodyConverted = this.convertIssuesAndComments(
@@ -622,14 +622,16 @@ export default class GithubHelper {
     // but only if the username is a valid GitHub username
     if (pullRequest.assignee) {
       props.assignees = [];
-      if (pullRequest.assignee.username === settings.github.username) {
-        props.assignees.push(settings.github.username);
+      if (pullRequest.assignee.username === this.settings.github.username) {
+        props.assignees.push(this.settings.github.username);
       } else if (
-        settings.usermap &&
-        settings.usermap[pullRequest.assignee.username]
+        this.settings.usermap &&
+        this.settings.usermap[pullRequest.assignee.username]
       ) {
         // Get GitHub username from settings
-        props.assignees.push(settings.usermap[pullRequest.assignee.username]);
+        props.assignees.push(
+          this.settings.usermap[pullRequest.assignee.username]
+        );
       }
     }
 
@@ -677,7 +679,7 @@ export default class GithubHelper {
     if (
       pullRequest.state === 'merged' &&
       githubPullRequest.state !== 'closed' &&
-      !settings.debug
+      !this.settings.debug
     ) {
       // Merging the pull request adds new commits to the tree; to avoid that, just close the merge requests
       pullRequest.state = 'closed';
@@ -696,7 +698,7 @@ export default class GithubHelper {
 
     await utils.sleep(2000);
 
-    if (settings.debug) {
+    if (this.settings.debug) {
       return Promise.resolve();
     }
 
@@ -736,8 +738,10 @@ export default class GithubHelper {
   convertIssuesAndComments(str, item) {
     const repoLink = `${this.githubUrl}/${this.githubOwner}/${this.githubRepo}`;
     if (
-      (!settings.usermap || Object.keys(settings.usermap).length === 0) &&
-      (!settings.projectmap || Object.keys(settings.projectmap).length === 0)
+      (!this.settings.usermap ||
+        Object.keys(this.settings.usermap).length === 0) &&
+      (!this.settings.projectmap ||
+        Object.keys(this.settings.projectmap).length === 0)
     ) {
       return GithubHelper.addMigrationLine(str, item, repoLink);
     } else {
@@ -752,12 +756,13 @@ export default class GithubHelper {
         matched => {
           if (matched.startsWith('@')) {
             // this is a userid
-            return '@' + settings.usermap[matched.substr(1)];
+            return '@' + this.settings.usermap[matched.substr(1)];
           } else if (matched.endsWith('#')) {
             // this is a cross-project issue reference
             return (
-              settings.projectmap[matched.substring(0, matched.length - 1)] +
-              '#'
+              this.settings.projectmap[
+                matched.substring(0, matched.length - 1)
+              ] + '#'
             );
           } else {
             // something went wrong, do nothing
